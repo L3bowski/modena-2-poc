@@ -7,8 +7,7 @@ const getExpressApp = () => {
     app.use(session({
         secret: 'keyboard cat',
         resave: false,
-        saveUninitialized: true,
-        cookie: { secure: true }
+        saveUninitialized: true
     }));
     app.use(/^\/$/, (req, res, next) => res.send(typeof req.session));
     app.use(/^\/view$/, (req, res, next) => res.render('index'));

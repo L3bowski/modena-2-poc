@@ -3,6 +3,7 @@ const path = require('path');
 const mainApp = express();
 const getExpressApp1 = require('./apps/app1/get-express-app');
 const getExpressApp2 = require('./apps/app2/get-express-app');
+const getExpressApp3 = require('./apps/passport/get-express-app');
 
 /*
     Modena should expose the following functions:
@@ -23,6 +24,9 @@ const resolverFunction = (req, res, next) => {
     }
     else if (req.url.startsWith('/app-2')) {
         accessedApp = 'app2';
+    }
+    else if (req.url.startsWith('/passport')) {
+        accessedApp = 'passport';
     }
     else {
         accessedApp = undefined;
@@ -47,6 +51,7 @@ mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
 
 mainApp.use('/app-1', getExpressApp1());
 mainApp.use('/app-2', getExpressApp2());
+mainApp.use('/passport', getExpressApp3());
 
 mainApp.listen(3000, error => {
     if (error) {
