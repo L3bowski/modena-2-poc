@@ -16,22 +16,55 @@ const getExpressApp3 = require('./apps/passport/get-express-app');
 
 let accessedApp;
 const resolverFunction = (req, res, next) => {
-    if (req.url === '/') {
-        accessedApp = 'mainApp';
+    accessedApp = undefined;
+    console.log(`Accessing ${req.url}...`);
+
+    // TODO 1) Try to find the accessed app by public domains first. Take into consideration allowAppsAcess
+
+    if (req.query && req.query.$modena) {
+        if (req.query.$modena === 'app1') {
+            accessedApp = 'app1';
+        }
+        else if (req.query.$modena === 'app2') {
+            accessedApp = 'app2';
+        }
+        else if (req.query.$modena === 'passport') {
+            accessedApp = 'passport';
+        }
+        else {
+            console.log('Wrong $modena value provided:', req.query.$modena);
+        }
+
+        if (accessedApp) {
+            const namespacePrefix = '/' + accessedApp;
+            if (!req.url.startsWith(namespacePrefix)) {
+                req.url = namespacePrefix + req.url;
+            }
+        }
     }
-    else if (req.url.startsWith('/app-1')) {
-        accessedApp = 'app1';
+
+    if (!accessedApp) {
+        if (req.url === '/') {
+            accessedApp = 'mainApp';
+        }
+        else if (req.url.startsWith('/app-1')) {
+            accessedApp = 'app1';
+        }
+        else if (req.url.startsWith('/app-2')) {
+            accessedApp = 'app2';
+        }
+        else if (req.url.startsWith('/passport')) {
+            accessedApp = 'passport';
+        }
+        else {
+            console.log('Unable to resolve the accessed app:', req.url);
+        }
     }
-    else if (req.url.startsWith('/app-2')) {
-        accessedApp = 'app2';
+
+    if (accessedApp) {
+        console.log(`Resolved access to ${accessedApp} (${req.url})`);
     }
-    else if (req.url.startsWith('/passport')) {
-        accessedApp = 'passport';
-    }
-    else {
-        accessedApp = undefined;
-    }
-    console.log('Accessing', accessedApp);
+
     next();
 };
 mainApp.use(resolverFunction);

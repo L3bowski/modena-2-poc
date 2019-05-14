@@ -16,12 +16,12 @@
 	};
 
 	window['logIn'] = () => {
-		postData('/login', {username: 'admin', password: 'admin'})
+		postData('/login?$modena=passport', {username: 'admin', password: 'admin'})
 		  .then(data => console.log(JSON.stringify(data)))
 		  .catch(error => console.error(error));
 	}
 	window['logOut'] = () => {
-		postData('/logout')
+		postData('/logout?$modena=passport')
 		  .then(data => console.log(JSON.stringify(data)))
 		  .catch(error => console.error(error));
 	}
