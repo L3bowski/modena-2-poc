@@ -14,12 +14,14 @@ const getExpressApp3 = require('./apps/passport/get-express-app');
         5) TODO Passport, body-parser, etc.
 */
 
+// TODO Resolve the configuration parameters through dotenv
+
 let accessedApp;
 const resolverFunction = (req, res, next) => {
     accessedApp = undefined;
     console.log(`Accessing ${req.url}...`);
 
-    // TODO 1) Try to find the accessed app by public domains first. Take into consideration allowAppsAcess
+    // TODO Try to find the accessed app by public domains first. Take into consideration allowCrossAccess
 
     if (req.query && req.query.$modena) {
         if (req.query.$modena === 'app1') {
