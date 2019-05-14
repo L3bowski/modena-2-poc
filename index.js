@@ -3,7 +3,8 @@ const path = require('path');
 const mainApp = express();
 const getExpressApp1 = require('./apps/app1/get-express-app');
 const getExpressApp2 = require('./apps/app2/get-express-app');
-const getExpressApp3 = require('./apps/passport/get-express-app');
+const getPassportApp = require('./apps/passport/get-express-app');
+const getConfigApp = require('./apps/config-app/get-express-app');
 
 /*
     Modena should expose the following functions:
@@ -33,6 +34,9 @@ const resolverFunction = (req, res, next) => {
         else if (req.query.$modena === 'passport') {
             accessedApp = 'passport';
         }
+        else if (req.query.$modena === 'config-app') {
+            accessedApp = 'config-app';
+        }
         else {
             console.log('Wrong $modena value provided:', req.query.$modena);
         }
@@ -57,6 +61,9 @@ const resolverFunction = (req, res, next) => {
         }
         else if (req.url.startsWith('/passport')) {
             accessedApp = 'passport';
+        }
+        else if (req.url.startsWith('/config-app')) {
+            accessedApp = 'config-app';
         }
         else {
             console.log('Unable to resolve the accessed app:', req.url);
@@ -86,7 +93,8 @@ mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
 
 mainApp.use('/app-1', getExpressApp1());
 mainApp.use('/app-2', getExpressApp2());
-mainApp.use('/passport', getExpressApp3());
+mainApp.use('/passport', getPassportApp());
+mainApp.use('/config-app', getConfigApp());
 
 mainApp.listen(3000, error => {
     if (error) {
