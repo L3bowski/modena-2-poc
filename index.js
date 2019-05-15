@@ -1,10 +1,11 @@
+const dotenv = require('dotenv');
 const express = require('express');
 const path = require('path');
 const mainApp = express();
 const getExpressApp1 = require('./apps/app1/get-express-app');
 const getExpressApp2 = require('./apps/app2/get-express-app');
-const getPassportApp = require('./apps/passport/get-express-app');
 const getConfigApp = require('./apps/config-app/get-express-app');
+const getPassportApp = require('./apps/passport/get-express-app');
 
 /*
     Modena should expose the following functions:
@@ -12,10 +13,41 @@ const getConfigApp = require('./apps/config-app/get-express-app');
         2) Given a set of apps, a resolver to determine which app is being accessed
         3) A function to set a default app (which will modify the resolveFunction value)
         4) A function to enable HTTPS (given the corresponding parameters)
-        5) TODO Passport, body-parser, etc.
 */
 
-// TODO Resolve the configuration parameters through dotenv
+const defaultConfig = {
+    CONFIG_PARAMETER: 'Value placeholder'
+};
+
+const importResult = dotenv.config();
+if (importResult.error) {
+    console.log(`No environment configuration found at ${__dirname}`);
+}
+
+// Getting the values from process.env instead of importResult.parsed so that they can easily be injected in Docker
+const environmentConfig = {
+    CONFIG_PARAMETER: process.env.CONFIG_PARAMETER !== undefined ? process.env.CONFIG_PARAMETER : defaultConfig.CONFIG_PARAMETER
+};
+
+const formatAppName = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
+
+const appsEnvironmentVariables = {
+    [formatAppName('app1')]: {},
+    [formatAppName('app2')]: {},
+    [formatAppName('config-app')]: {},
+    [formatAppName('passport')]: {}
+};
+
+Object.keys(process.env).forEach(envKey => {
+    Object.keys(appsEnvironmentVariables).forEach(appKey => {
+        if (envKey.startsWith(appKey)) {
+            appsEnvironmentVariables[appKey][envKey.replace(appKey, '')] = process.env[envKey];
+            delete process.env[envKey];
+        }
+    });
+});
+
+const getAppEnvironmentVariables = appName => appsEnvironmentVariables[formatAppName(appName)];
 
 let accessedApp;
 const resolverFunction = (req, res, next) => {
@@ -31,11 +63,11 @@ const resolverFunction = (req, res, next) => {
         else if (req.query.$modena === 'app2') {
             accessedApp = 'app2';
         }
-        else if (req.query.$modena === 'passport') {
-            accessedApp = 'passport';
-        }
         else if (req.query.$modena === 'config-app') {
             accessedApp = 'config-app';
+        }
+        else if (req.query.$modena === 'passport') {
+            accessedApp = 'passport';
         }
         else {
             console.log('Wrong $modena value provided:', req.query.$modena);
@@ -53,17 +85,17 @@ const resolverFunction = (req, res, next) => {
         if (req.url === '/') {
             accessedApp = 'mainApp';
         }
-        else if (req.url.startsWith('/app-1')) {
+        else if (req.url.startsWith('/app1')) {
             accessedApp = 'app1';
         }
-        else if (req.url.startsWith('/app-2')) {
+        else if (req.url.startsWith('/app2')) {
             accessedApp = 'app2';
-        }
-        else if (req.url.startsWith('/passport')) {
-            accessedApp = 'passport';
         }
         else if (req.url.startsWith('/config-app')) {
             accessedApp = 'config-app';
+        }
+        else if (req.url.startsWith('/passport')) {
+            accessedApp = 'passport';
         }
         else {
             console.log('Unable to resolve the accessed app:', req.url);
@@ -91,16 +123,17 @@ mainApp.use(renderIsolator);
 
 mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
 
-mainApp.use('/app-1', getExpressApp1());
-mainApp.use('/app-2', getExpressApp2());
-mainApp.use('/passport', getPassportApp());
-mainApp.use('/config-app', getConfigApp());
+// TODO Support Promises return value
+mainApp.use('/app1', getExpressApp1(getAppEnvironmentVariables('app1')));
+mainApp.use('/app2', getExpressApp2(getAppEnvironmentVariables('app2')));
+mainApp.use('/config-app', getConfigApp(getAppEnvironmentVariables('config-app')));
+mainApp.use('/passport', getPassportApp(getAppEnvironmentVariables('passport')));
 
 mainApp.listen(3000, error => {
     if (error) {
         console.log(error);
     }
     else {
-        console.log('Yuhu');
+        console.log(`Server up & running in port 3000 (with CONFIG_PARAMETER="${environmentConfig.CONFIG_PARAMETER}")`);
     }
 });

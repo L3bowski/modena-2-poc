@@ -1,9 +1,9 @@
-const getExpressApp = require('./get-express-app');
 const dotenv = require('dotenv');
+const getExpressApp = require('./get-express-app');
 
 const importResult = dotenv.config();
 if (importResult.error) {
-    console.log('Error importing environment configuration')
+    console.log(`No environment configuration found at ${__dirname}`);
 }
 
 // Getting the values from process.env instead of importResult.parsed so that they can easily be injected in Docker
