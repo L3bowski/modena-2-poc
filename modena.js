@@ -69,32 +69,21 @@ const getRenderIsolator = appsPath => (req, res, next) => {
 };
 
 const getRequestResolver = apps => (req, res, next) => {
-    req.__modenaApp = undefined;
     console.log(`Accessing ${req.url}...`);
+    req.__modenaApp = undefined;
 
     // TODO Try to find the accessed app by public domains first. Take into consideration allowCrossAccess
 
     if (req.query && req.query.$modena) {
         req.__modenaApp = apps.find(app => req.query.$modena === app.name);
 
-        if (req.__modenaApp) {
-            const namespacePrefix = '/' + req.__modenaApp.name;
-            if (!req.url.startsWith(namespacePrefix)) {
-                req.url = namespacePrefix + req.url;
-            }
-        }
-        else {
+        if (!req.__modenaApp) {
             console.log('Wrong $modena value provided:', req.query.$modena);
         }
     }
 
     if (!req.__modenaApp) {
-        if (req.url === '/') {
-            req.__modenaApp = {name: 'mainApp'};
-        }
-        else {
-            req.__modenaApp = apps.find(app => req.url.startsWith(`/${app.name}`));
-        }
+        req.__modenaApp = apps.find(app => req.url.startsWith(`/${app.name}`));
 
         if(!req.__modenaApp) {
             console.log('Unable to resolve the accessed app:', req.url);
@@ -102,6 +91,10 @@ const getRequestResolver = apps => (req, res, next) => {
     }
 
     if (req.__modenaApp) {
+        const namespacePrefix = '/' + req.__modenaApp.name;
+        if (!req.url.startsWith(namespacePrefix)) {
+            req.url = namespacePrefix + req.url;
+        }
         console.log(`Resolved access to ${req.__modenaApp.name} (${req.url})`);
     }
 

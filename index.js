@@ -6,10 +6,7 @@ const { discoverApps, getAppsEnvironmentVariables, getRenderIsolator, getRequest
 
 /*
     Modena should expose the following functions:
-        1) Get all the existing express apps in the target folder ('./apps' by default)
-        2) Given a set of apps, a resolver to determine which app is being accessed
-        3) A function to set a default app (which will modify the resolveFunction value)
-        4) A function to enable HTTPS (given the corresponding parameters)
+        - A function to launch the express app, optionally enabling HTTPS
 */
 
 const defaultConfig = {
@@ -30,11 +27,12 @@ const appsPath = path.join(__dirname, 'apps');
 const apps = discoverApps(appsPath);
 const appsEnvironmentVariables = getAppsEnvironmentVariables(apps);
 
-mainApp.use(getRequestResolver(apps));
+mainApp.use(getRequestResolver(apps)); // TODO Pass a default app
 mainApp.use(getRenderIsolator(appsPath));
 
 mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
 
+// TODO Expose apps in a modena function
 apps.forEach(app => {
     const getExpressApp = require(app.expressAppFile);
     // TODO Support Promises return value
