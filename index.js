@@ -38,13 +38,14 @@ setDefaultApp(apps, 'passport');
 mainApp.use(getRequestResolver(apps));
 mainApp.use(getRenderIsolator(appsPath));
 
-exposeHostedApps(mainApp, apps);
-
-mainApp.listen(3000, error => {
-    if (error) {
-        console.log(error);
-    }
-    else {
-        console.log(`Server up & running in port 3000 (with CONFIG_PARAMETER="${environmentConfig.CONFIG_PARAMETER}")`);
-    }
+exposeHostedApps(mainApp, apps)
+    .then(() => {
+        mainApp.listen(3000, error => {
+            if (error) {
+                console.log(error);
+            }
+            else {
+                console.log(`Server up & running in port 3000 (with CONFIG_PARAMETER="${environmentConfig.CONFIG_PARAMETER}")`);
+            }
+        });
 });

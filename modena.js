@@ -2,12 +2,13 @@ const { existsSync, lstatSync, readdirSync } = require('fs');
 const { join } = require('path');
 
 const exposeHostedApps = (mainApp, hostedApps) => {
-    hostedApps.forEach(hostedApp => {
+    // TODO Handle exception that might be raised on require
+    // TODO Log how many apps and which ones have been exposed
+    return Promise.all(hostedApps.map(hostedApp => {
         const getExpressHostedApp = require(hostedApp.expressAppFile);
-        // TODO Support Promises return value
-        const expressHostedApp = getExpressHostedApp(hostedApp.variables);
-        mainApp.use(`/${hostedApp.name}`, expressHostedApp);    
-    });
+        return Promise.resolve(getExpressHostedApp(hostedApp.variables))
+            .then(expressHostedApp => mainApp.use(`/${hostedApp.name}`, expressHostedApp));
+    }));
 };
 
 const getAppEnvironmentPrefix = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
