@@ -29,6 +29,16 @@ const discoverApps = appsPath => {
     return apps;
 };
 
+const exposeHostedApps = (app, hostedApps, appsEnvironmentVariables) => {
+    hostedApps.forEach(hostedApp => {
+        const getExpressHostedApp = require(hostedApp.expressAppFile);
+        // TODO Support Promises return value
+        const hostedAppEnvironmentVariables = appsEnvironmentVariables ? appsEnvironmentVariables[hostedApp.name] : {};
+        const expressHostedApp = getExpressHostedApp(hostedAppEnvironmentVariables);
+        app.use(`/${hostedApp.name}`, expressHostedApp);    
+    });    
+}
+
 const getAppEnvironmentPrefix = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
 
 const getAppsEnvironmentVariables = apps => {
@@ -103,6 +113,7 @@ const getRequestResolver = apps => (req, res, next) => {
 
 module.exports = {
     discoverApps,
+    exposeHostedApps,
     getAppsEnvironmentVariables,
     getRenderIsolator,
     getRequestResolver

@@ -32,13 +32,7 @@ mainApp.use(getRenderIsolator(appsPath));
 
 mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
 
-// TODO Expose apps in a modena function
-apps.forEach(app => {
-    const getExpressApp = require(app.expressAppFile);
-    // TODO Support Promises return value
-    const expressApp = getExpressApp(appsEnvironmentVariables[app.name]);
-    mainApp.use(`/${app.name}`, expressApp);    
-});
+exposeHostedApps(mainApp, apps, appsEnvironmentVariables);
 
 mainApp.listen(3000, error => {
     if (error) {
