@@ -10,12 +10,9 @@ const {
     setDefaultApp
 } = require('./modena');
 
+// TODO Create passport-1 and passport-2 apps to show isolated sessions
+// TODO A function to launch the express app, optionally enabling HTTPS
 // TODO Add winston
-
-/*
-    Modena should expose the following functions:
-        - A function to launch the express app, optionally enabling HTTPS
-*/
 
 const defaultConfig = {
     CONFIG_PARAMETER: 'Value placeholder'

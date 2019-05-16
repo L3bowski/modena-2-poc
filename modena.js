@@ -2,13 +2,37 @@ const { existsSync, lstatSync, readdirSync } = require('fs');
 const { join } = require('path');
 
 const exposeHostedApps = (mainApp, hostedApps) => {
-    // TODO Handle exception that might be raised on require
-    // TODO Log how many apps and which ones have been exposed
     return Promise.all(hostedApps.map(hostedApp => {
-        const getExpressHostedApp = require(hostedApp.expressAppFile);
-        return Promise.resolve(getExpressHostedApp(hostedApp.variables))
-            .then(expressHostedApp => mainApp.use(`/${hostedApp.name}`, expressHostedApp));
-    }));
+        try {
+            const getExpressHostedApp = require(hostedApp.expressAppFile);
+            const expressHostedApp = getExpressHostedApp(hostedApp.variables);
+            if (!(expressHostedApp instanceof Promise)) {
+                mainApp.use(`/${hostedApp.name}`, expressHostedApp);
+                console.log(`Successfully exposed ${hostedApp.name}`);
+                return Promise.resolve(1);
+            }
+            else {
+                return expressHostedApp
+                    .then(deferredExpressHostedApp => {
+                        mainApp.use(`/${hostedApp.name}`, deferredExpressHostedApp);
+                        console.log(`Successfully exposed ${hostedApp.name}`);
+                        return 1;
+                    })
+                    .catch(error => {
+                        console.log(`Error exposing ${hostedApp.name} app`, error);
+                        return 0;
+                    });
+            }
+        }
+        catch (error) {
+            console.log(`Error exposing ${hostedApp.name} app`, error);
+            return Promise.resolve(0);
+        }
+    }))
+    .then(results => {
+        const exposedAppsNumber = results.reduce((reduced, result) => reduced + result, 0);
+        console.log(`Exposed ${exposedAppsNumber} apps in total!`);
+    });
 };
 
 const getAppEnvironmentPrefix = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
