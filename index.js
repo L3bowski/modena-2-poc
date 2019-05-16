@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 const express = require('express');
 const path = require('path');
 const mainApp = express();
-const { discoverApps, getAppsEnvironmentVariables } = require('./modena');
+const { discoverApps, getAppsEnvironmentVariables, getRenderIsolator, getRequestResolver } = require('./modena');
 
 /*
     Modena should expose the following functions:
@@ -30,57 +30,8 @@ const appsPath = path.join(__dirname, 'apps');
 const apps = discoverApps(appsPath);
 const appsEnvironmentVariables = getAppsEnvironmentVariables(apps);
 
-let accessedApp;
-const resolverFunction = (req, res, next) => {
-    accessedApp = undefined;
-    console.log(`Accessing ${req.url}...`);
-
-    // TODO Try to find the accessed app by public domains first. Take into consideration allowCrossAccess
-
-    if (req.query && req.query.$modena) {
-        accessedApp = apps.find(app => req.query.$modena === app.name);
-
-        if (accessedApp) {
-            const namespacePrefix = '/' + accessedApp.name;
-            if (!req.url.startsWith(namespacePrefix)) {
-                req.url = namespacePrefix + req.url;
-            }
-        }
-        else {
-            console.log('Wrong $modena value provided:', req.query.$modena);
-        }
-    }
-
-    if (!accessedApp) {
-        if (req.url === '/') {
-            accessedApp = {name: 'mainApp'};
-        }
-        else {
-            accessedApp = apps.find(app => req.url.startsWith(`/${app.name}`));
-        }
-
-        if(!accessedApp) {
-            console.log('Unable to resolve the accessed app:', req.url);
-        }
-    }
-
-    if (accessedApp) {
-        console.log(`Resolved access to ${accessedApp.name} (${req.url})`);
-    }
-
-    next();
-};
-mainApp.use(resolverFunction);
-
-const renderIsolator = (req, res, next) => {
-    const renderFunction = res.render.bind(res);
-    res.render = (viewName, options) => {
-        const viewPath = path.resolve(appsPath, accessedApp.name, 'views', viewName);
-        renderFunction(viewPath, options);
-    }
-    next();
-};
-mainApp.use(renderIsolator);
+mainApp.use(getRequestResolver(apps));
+mainApp.use(getRenderIsolator(appsPath));
 
 mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
 
