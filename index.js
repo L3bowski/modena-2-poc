@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 const express = require('express');
 const path = require('path');
 const mainApp = express();
-const { discoverApps } = require('./modena');
+const { discoverApps, getAppsEnvironmentVariables } = require('./modena');
 
 /*
     Modena should expose the following functions:
@@ -28,24 +28,7 @@ const environmentConfig = {
 
 const appsPath = path.join(__dirname, 'apps');
 const apps = discoverApps(appsPath);
-
-const formatAppName = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
-
-const appsEnvironmentVariables = apps.reduce((reduced, app) => ({
-    ...reduced,
-    [formatAppName(app.name)]: {}
-}), {});
-
-Object.keys(process.env).forEach(envKey => {
-    Object.keys(appsEnvironmentVariables).forEach(appKey => {
-        if (envKey.startsWith(appKey)) {
-            appsEnvironmentVariables[appKey][envKey.replace(appKey, '')] = process.env[envKey];
-            delete process.env[envKey];
-        }
-    });
-});
-
-const getAppEnvironmentVariables = appName => appsEnvironmentVariables[formatAppName(appName)];
+const appsEnvironmentVariables = getAppsEnvironmentVariables(apps);
 
 let accessedApp;
 const resolverFunction = (req, res, next) => {
@@ -104,7 +87,7 @@ mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
 apps.forEach(app => {
     const getExpressApp = require(app.expressAppFile);
     // TODO Support Promises return value
-    const expressApp = getExpressApp(getAppEnvironmentVariables(app.name));
+    const expressApp = getExpressApp(appsEnvironmentVariables[app.name]);
     mainApp.use(`/${app.name}`, expressApp);    
 });
 

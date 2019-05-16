@@ -1,9 +1,6 @@
 const { existsSync, lstatSync, readdirSync } = require('fs');
 const { join } = require('path');
 
-const getDirectoriesName = path =>
-    readdirSync(path).filter(name => lstatSync(join(path, name)).isDirectory());
-
 const discoverApps = appsPath => {
     if (!appsPath) {
         console.error('No apps path was provided');
@@ -32,6 +29,35 @@ const discoverApps = appsPath => {
     return apps;
 };
 
+const getAppEnvironmentPrefix = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
+
+const getAppsEnvironmentVariables = apps => {
+    const appsEnvironment = apps.map(app => ({
+        name: app.name,
+        prefix: getAppEnvironmentPrefix(app.name),
+        variables: {}
+    }));
+    
+    Object.keys(process.env).forEach(envKey => {
+        appsEnvironment.forEach(appEnvironment => {
+            if (envKey.startsWith(appEnvironment.prefix)) {
+                appEnvironment.variables[envKey.replace(appEnvironment.prefix, '')] = process.env[envKey];
+                delete process.env[envKey];
+            }
+        });
+    });
+
+    const appsEnvironmentVariables = appsEnvironment.reduce((reduced, appEnvironment) => ({
+        ...reduced,
+        [appEnvironment.name]: appEnvironment.variables
+    }), {});
+    return appsEnvironmentVariables;
+};
+
+const getDirectoriesName = path =>
+    readdirSync(path).filter(name => lstatSync(join(path, name)).isDirectory());
+
 module.exports = {
-    discoverApps
+    discoverApps,
+    getAppsEnvironmentVariables
 };
