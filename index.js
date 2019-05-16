@@ -2,10 +2,7 @@ const dotenv = require('dotenv');
 const express = require('express');
 const path = require('path');
 const mainApp = express();
-const getExpressApp1 = require('./apps/app1/get-express-app');
-const getExpressApp2 = require('./apps/app2/get-express-app');
-const getConfigApp = require('./apps/config-app/get-express-app');
-const getPassportApp = require('./apps/passport/get-express-app');
+const { discoverApps } = require('./modena');
 
 /*
     Modena should expose the following functions:
@@ -29,14 +26,15 @@ const environmentConfig = {
     CONFIG_PARAMETER: process.env.CONFIG_PARAMETER !== undefined ? process.env.CONFIG_PARAMETER : defaultConfig.CONFIG_PARAMETER
 };
 
+const appsPath = path.join(__dirname, 'apps');
+const apps = discoverApps(appsPath);
+
 const formatAppName = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
 
-const appsEnvironmentVariables = {
-    [formatAppName('app1')]: {},
-    [formatAppName('app2')]: {},
-    [formatAppName('config-app')]: {},
-    [formatAppName('passport')]: {}
-};
+const appsEnvironmentVariables = apps.reduce((reduced, app) => ({
+    ...reduced,
+    [formatAppName(app.name)]: {}
+}), {});
 
 Object.keys(process.env).forEach(envKey => {
     Object.keys(appsEnvironmentVariables).forEach(appKey => {
@@ -57,64 +55,44 @@ const resolverFunction = (req, res, next) => {
     // TODO Try to find the accessed app by public domains first. Take into consideration allowCrossAccess
 
     if (req.query && req.query.$modena) {
-        if (req.query.$modena === 'app1') {
-            accessedApp = 'app1';
-        }
-        else if (req.query.$modena === 'app2') {
-            accessedApp = 'app2';
-        }
-        else if (req.query.$modena === 'config-app') {
-            accessedApp = 'config-app';
-        }
-        else if (req.query.$modena === 'passport') {
-            accessedApp = 'passport';
-        }
-        else {
-            console.log('Wrong $modena value provided:', req.query.$modena);
-        }
+        accessedApp = apps.find(app => req.query.$modena === app.name);
 
         if (accessedApp) {
-            const namespacePrefix = '/' + accessedApp;
+            const namespacePrefix = '/' + accessedApp.name;
             if (!req.url.startsWith(namespacePrefix)) {
                 req.url = namespacePrefix + req.url;
             }
+        }
+        else {
+            console.log('Wrong $modena value provided:', req.query.$modena);
         }
     }
 
     if (!accessedApp) {
         if (req.url === '/') {
-            accessedApp = 'mainApp';
-        }
-        else if (req.url.startsWith('/app1')) {
-            accessedApp = 'app1';
-        }
-        else if (req.url.startsWith('/app2')) {
-            accessedApp = 'app2';
-        }
-        else if (req.url.startsWith('/config-app')) {
-            accessedApp = 'config-app';
-        }
-        else if (req.url.startsWith('/passport')) {
-            accessedApp = 'passport';
+            accessedApp = {name: 'mainApp'};
         }
         else {
+            accessedApp = apps.find(app => req.url.startsWith(`/${app.name}`));
+        }
+
+        if(!accessedApp) {
             console.log('Unable to resolve the accessed app:', req.url);
         }
     }
 
     if (accessedApp) {
-        console.log(`Resolved access to ${accessedApp} (${req.url})`);
+        console.log(`Resolved access to ${accessedApp.name} (${req.url})`);
     }
 
     next();
 };
 mainApp.use(resolverFunction);
 
-const appsPath = path.join(__dirname, 'apps');
 const renderIsolator = (req, res, next) => {
     const renderFunction = res.render.bind(res);
     res.render = (viewName, options) => {
-        const viewPath = path.resolve(appsPath, accessedApp, 'views', viewName);
+        const viewPath = path.resolve(appsPath, accessedApp.name, 'views', viewName);
         renderFunction(viewPath, options);
     }
     next();
@@ -123,11 +101,12 @@ mainApp.use(renderIsolator);
 
 mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
 
-// TODO Support Promises return value
-mainApp.use('/app1', getExpressApp1(getAppEnvironmentVariables('app1')));
-mainApp.use('/app2', getExpressApp2(getAppEnvironmentVariables('app2')));
-mainApp.use('/config-app', getConfigApp(getAppEnvironmentVariables('config-app')));
-mainApp.use('/passport', getPassportApp(getAppEnvironmentVariables('passport')));
+apps.forEach(app => {
+    const getExpressApp = require(app.expressAppFile);
+    // TODO Support Promises return value
+    const expressApp = getExpressApp(getAppEnvironmentVariables(app.name));
+    mainApp.use(`/${app.name}`, expressApp);    
+});
 
 mainApp.listen(3000, error => {
     if (error) {
