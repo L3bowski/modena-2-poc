@@ -12,13 +12,13 @@ const exposeHostedApps = (mainApp, hostedApps) => {
 
 const getAppEnvironmentPrefix = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
 
-const getAvailableApps = appsPath => {
+const getAvailableApps = (appsPath, doLoadEnvironmentVariables = true) => {
     if (!appsPath) {
         console.error('No apps path was provided');
         return [];
     }
 
-    const apps = getDirectoriesName(appsPath)
+    let apps = getDirectoriesName(appsPath)
         .map(appName => {
             const appPath = join(appsPath, appName);
 
@@ -31,11 +31,16 @@ const getAvailableApps = appsPath => {
             const app = {
                 name: appName,
                 path: appPath,
-                expressAppFile: join(appPath, modenaAppConfig['expressAppFile'] || 'get-express-app.js')
+                expressAppFile: join(appPath, modenaAppConfig['expressAppFile'] || 'get-express-app.js'),
+                isDefaultApp: false
             };
             return app;
         })
         .filter(app => existsSync(app.expressAppFile));
+
+    if (doLoadEnvironmentVariables) {
+        apps = loadEnvironmentVariables(apps);
+    }
 
     return apps;
 };
@@ -72,8 +77,12 @@ const getRequestResolver = apps => (req, res, next) => {
         req.__modenaApp = apps.find(app => req.url.startsWith(`/${app.name}`));
 
         if(!req.__modenaApp) {
-            console.log('Unable to resolve the accessed app:', req.url);
+            console.log('Unable to match the accessed url to any app:', req.url);
         }
+    }
+
+    if (!req.__modenaApp) {
+        req.__modenaApp = apps.find(app => app.isDefaultApp);
     }
 
     if (req.__modenaApp) {
@@ -110,10 +119,22 @@ const loadEnvironmentVariables = apps => {
     return appsEnvironmentVariables;
 };
 
+const setDefaultApp = (apps, defaultAppName) => {
+    const isThereSomeDefaultApp = apps.reduce((reduced, app) => {
+        app.isDefaultApp = app.name === defaultAppName;
+        return reduced || app.isDefaultApp;
+    }, false);
+
+    if(!isThereSomeDefaultApp) {
+        console.log(`Error setting the default app: there is no app named ${defaultAppName}`);
+    }
+};
+
 module.exports = {
     exposeHostedApps,
     getAvailableApps,
     getRenderIsolator,
     getRequestResolver,
-    loadEnvironmentVariables
+    loadEnvironmentVariables,
+    setDefaultApp
 };
