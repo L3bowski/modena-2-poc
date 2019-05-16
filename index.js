@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 const express = require('express');
 const path = require('path');
 const mainApp = express();
-const { discoverApps, getAppsEnvironmentVariables, getRenderIsolator, getRequestResolver } = require('./modena');
+const { exposeHostedApps, getAvailableApps, getRenderIsolator, getRequestResolver, loadEnvironmentVariables } = require('./modena');
 
 /*
     Modena should expose the following functions:
@@ -24,15 +24,15 @@ const environmentConfig = {
 };
 
 const appsPath = path.join(__dirname, 'apps');
-const apps = discoverApps(appsPath);
-const appsEnvironmentVariables = getAppsEnvironmentVariables(apps);
+const apps = getAvailableApps(appsPath);
+const loadedApps = loadEnvironmentVariables(apps);
 
 mainApp.use(getRequestResolver(apps)); // TODO Pass a default app
 mainApp.use(getRenderIsolator(appsPath));
 
-mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
+exposeHostedApps(mainApp, loadedApps);
 
-exposeHostedApps(mainApp, apps, appsEnvironmentVariables);
+mainApp.use(/^\/$/, (req, res, next) => res.send('Main app'));
 
 mainApp.listen(3000, error => {
     if (error) {

@@ -1,7 +1,18 @@
 const { existsSync, lstatSync, readdirSync } = require('fs');
 const { join } = require('path');
 
-const discoverApps = appsPath => {
+const exposeHostedApps = (mainApp, hostedApps) => {
+    hostedApps.forEach(hostedApp => {
+        const getExpressHostedApp = require(hostedApp.expressAppFile);
+        // TODO Support Promises return value
+        const expressHostedApp = getExpressHostedApp(hostedApp.variables);
+        mainApp.use(`/${hostedApp.name}`, expressHostedApp);    
+    });
+};
+
+const getAppEnvironmentPrefix = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
+
+const getAvailableApps = appsPath => {
     if (!appsPath) {
         console.error('No apps path was provided');
         return [];
@@ -27,41 +38,6 @@ const discoverApps = appsPath => {
         .filter(app => existsSync(app.expressAppFile));
 
     return apps;
-};
-
-const exposeHostedApps = (app, hostedApps, appsEnvironmentVariables) => {
-    hostedApps.forEach(hostedApp => {
-        const getExpressHostedApp = require(hostedApp.expressAppFile);
-        // TODO Support Promises return value
-        const hostedAppEnvironmentVariables = appsEnvironmentVariables ? appsEnvironmentVariables[hostedApp.name] : {};
-        const expressHostedApp = getExpressHostedApp(hostedAppEnvironmentVariables);
-        app.use(`/${hostedApp.name}`, expressHostedApp);    
-    });    
-}
-
-const getAppEnvironmentPrefix = appName => appName.toUpperCase().replace(/-/g,'_') + '__';
-
-const getAppsEnvironmentVariables = apps => {
-    const appsEnvironment = apps.map(app => ({
-        name: app.name,
-        prefix: getAppEnvironmentPrefix(app.name),
-        variables: {}
-    }));
-    
-    Object.keys(process.env).forEach(envKey => {
-        appsEnvironment.forEach(appEnvironment => {
-            if (envKey.startsWith(appEnvironment.prefix)) {
-                appEnvironment.variables[envKey.replace(appEnvironment.prefix, '')] = process.env[envKey];
-                delete process.env[envKey];
-            }
-        });
-    });
-
-    const appsEnvironmentVariables = appsEnvironment.reduce((reduced, appEnvironment) => ({
-        ...reduced,
-        [appEnvironment.name]: appEnvironment.variables
-    }), {});
-    return appsEnvironmentVariables;
 };
 
 const getDirectoriesName = path =>
@@ -111,10 +87,33 @@ const getRequestResolver = apps => (req, res, next) => {
     next();
 };
 
+const loadEnvironmentVariables = apps => {
+    const appsEnvironment = apps.map(app => ({
+        config: app,
+        prefix: getAppEnvironmentPrefix(app.name),
+        variables: {}
+    }));
+    
+    Object.keys(process.env).forEach(envKey => {
+        appsEnvironment.forEach(appEnvironment => {
+            if (envKey.startsWith(appEnvironment.prefix)) {
+                appEnvironment.variables[envKey.replace(appEnvironment.prefix, '')] = process.env[envKey];
+                delete process.env[envKey];
+            }
+        });
+    });
+
+    const appsEnvironmentVariables = appsEnvironment.map(app => ({
+        ...app.config,
+        variables: app.variables
+    }));
+    return appsEnvironmentVariables;
+};
+
 module.exports = {
-    discoverApps,
     exposeHostedApps,
-    getAppsEnvironmentVariables,
+    getAvailableApps,
     getRenderIsolator,
-    getRequestResolver
+    getRequestResolver,
+    loadEnvironmentVariables
 };
