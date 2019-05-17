@@ -54,10 +54,11 @@ const getAvailableApps = (appsPath, doLoadEnvironmentVariables = true) => {
             }
 
             const app = {
+                expressAppFile: join(appPath, modenaAppConfig.expressAppFile || 'get-express-app.js'),
+                isDefaultApp: false,
                 name: appName,
                 path: appPath,
-                expressAppFile: join(appPath, modenaAppConfig['expressAppFile'] || 'get-express-app.js'),
-                isDefaultApp: false
+                publicDomains: modenaAppConfig.publicDomains || []
             };
             return app;
         })
@@ -84,38 +85,108 @@ const getRenderIsolator = appsPath => (req, res, next) => {
     next();
 };
 
+const resolveThroughDefaultApp = (apps) => {
+    const matchingApps = apps.reduce((reduced, app) => {
+        if (app.isDefaultApp) {
+            ++reduced.count;
+            reduced.apps.push(app);
+        }
+        return reduced;
+    }, {
+        count: 0,
+        apps: []
+    });
+
+    if (matchingApps.count > 1) {
+        console.log(`   Conflict! [${matchingApps.apps.map(app => app.name).join(', ')}] apps are all set as default`);
+    }
+
+    const accessedApp = matchingApps.apps[0];
+    if (!accessedApp) {
+        console.log(`   No default app was set`);
+    }
+    else {
+        console.log('   Request resolved through default app:', accessedApp.name);
+    }
+
+    return accessedApp;
+}
+
+const resolveThroughDomain = (apps, domain) => {
+    const matchingApps = apps.reduce((reduced, app) => {
+        const isMatchingAnyDomain = app.publicDomains.find(d => d === domain);
+        if (isMatchingAnyDomain) {
+            ++reduced.count;
+            reduced.apps.push(app);
+        }
+        return reduced;
+    }, {
+        count: 0,
+        apps: []
+    });
+
+    if (matchingApps.count > 1) {
+        console.log(`   Conflict! [${matchingApps.apps.map(app => app.name).join(', ')}] apps are all matching to ${domain}`);
+    }
+
+    const accessedApp = matchingApps.apps[0];
+    if (!accessedApp) {
+        console.log(`   Unable to match the public domain (${domain}) to any app`);
+    }
+    else {
+        console.log('   Request resolved through public domain:', accessedApp.name);
+    }
+
+    return accessedApp;
+};
+
+const resolveThroughQueryParameters = (apps, query) => {
+    let accessedApp = undefined;
+    if (query && query.$modena) {
+        accessedApp = apps.find(app => app.name === query.$modena);
+        if (!accessedApp) {
+            console.log(`   Unable to match the $modena query parameter (${query.$modena}) to any app`);
+        }
+        else {
+            console.log('   Request resolved through $modena query parameter:', accessedApp.name);
+        }
+    }
+    else {
+        console.log('   No $modena query parameter was provided');
+    }
+    return accessedApp;
+}
+
+const resolveThroughUrlPathname = (apps, url) => {
+    const accessedApp = apps.find(app => url.startsWith(`/${app.name}`));
+    if(!accessedApp) {
+        console.log(`   Unable to match the url pathname (${url}) to any app`);
+    }
+    else {
+        console.log('   Request resolved through url pathname:', accessedApp.name);
+    }
+    return  accessedApp;
+}
+
 const getRequestResolver = apps => (req, res, next) => {
     console.log(`Accessing ${req.url}...`);
     req.__modenaApp = undefined;
 
-    // TODO Try to find the accessed app by public domains first. Take into consideration allowCrossAccess
-
-    if (req.query && req.query.$modena) {
-        req.__modenaApp = apps.find(app => req.query.$modena === app.name);
-
-        if (!req.__modenaApp) {
-            console.log('Wrong $modena value provided:', req.query.$modena);
-        }
-    }
-
-    if (!req.__modenaApp) {
-        req.__modenaApp = apps.find(app => req.url.startsWith(`/${app.name}`));
-
-        if(!req.__modenaApp) {
-            console.log('Unable to match the accessed url to any app:', req.url);
-        }
-    }
-
-    if (!req.__modenaApp) {
-        req.__modenaApp = apps.find(app => app.isDefaultApp);
-    }
+    req.__modenaApp = resolveThroughDomain(apps, req.headers.host);    
+    // TODO Take into consideration allowCrossAccess for public domains
+    req.__modenaApp = req.__modenaApp || resolveThroughQueryParameters(apps, req.query);
+    req.__modenaApp = req.__modenaApp || resolveThroughUrlPathname(apps, req.url);
+    req.__modenaApp = req.__modenaApp || resolveThroughDefaultApp(apps);
 
     if (req.__modenaApp) {
         const namespacePrefix = '/' + req.__modenaApp.name;
         if (!req.url.startsWith(namespacePrefix)) {
             req.url = namespacePrefix + req.url;
+            console.log(`   Request url updated: ${req.url}`);
         }
-        console.log(`Resolved access to ${req.__modenaApp.name} (${req.url})`);
+    }
+    else {
+        console.log('   The request could not be resolved to any app');
     }
 
     next();
