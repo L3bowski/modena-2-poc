@@ -6,6 +6,6 @@ app.listen(3000, error => {
         console.log(error);
     }
     else {
-        console.log('Promise app running in port 3000');
+        console.log('Failing app running in port 3000');
     }
 });
