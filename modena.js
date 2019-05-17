@@ -86,17 +86,7 @@ const getRenderIsolator = appsPath => (req, res, next) => {
 };
 
 const resolveThroughDefaultApp = (apps) => {
-    const matchingApps = apps.reduce((reduced, app) => {
-        if (app.isDefaultApp) {
-            ++reduced.count;
-            reduced.apps.push(app);
-        }
-        return reduced;
-    }, {
-        count: 0,
-        apps: []
-    });
-
+    const matchingApps = resolveThroughNonUniqueCriteria(apps, app => app.isDefaultApp);
     if (matchingApps.count > 1) {
         console.log(`   Conflict! [${matchingApps.apps.map(app => app.name).join(', ')}] apps are all set as default`);
     }
@@ -113,18 +103,7 @@ const resolveThroughDefaultApp = (apps) => {
 }
 
 const resolveThroughDomain = (apps, domain) => {
-    const matchingApps = apps.reduce((reduced, app) => {
-        const isMatchingAnyDomain = app.publicDomains.find(d => d === domain);
-        if (isMatchingAnyDomain) {
-            ++reduced.count;
-            reduced.apps.push(app);
-        }
-        return reduced;
-    }, {
-        count: 0,
-        apps: []
-    });
-
+    const matchingApps = resolveThroughNonUniqueCriteria(apps, app => app.publicDomains.find(d => d === domain));
     if (matchingApps.count > 1) {
         console.log(`   Conflict! [${matchingApps.apps.map(app => app.name).join(', ')}] apps are all matching to ${domain}`);
     }
@@ -139,6 +118,21 @@ const resolveThroughDomain = (apps, domain) => {
 
     return accessedApp;
 };
+
+const resolveThroughNonUniqueCriteria = (apps, criteria) => {
+    const matchingApps = apps.reduce((reduced, app) => {
+        if (criteria(app)) {
+            ++reduced.count;
+            reduced.apps.push(app);
+        }
+        return reduced;
+    }, {
+        count: 0,
+        apps: []
+    });
+
+    return matchingApps;
+}
 
 const resolveThroughQueryParameters = (apps, query) => {
     let accessedApp = undefined;
