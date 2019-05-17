@@ -1,18 +1,23 @@
 const dotenv = require('dotenv');
 const express = require('express');
 const path = require('path');
-const mainApp = express();
 const {
     exposeHostedApps,
     getAvailableApps,
     getRenderIsolator,
     getRequestResolver,
     setDefaultApp
-} = require('./modena');
+} = require('modena');
+
+const mainApp = express();
 
 // TODO Create passport-1 and passport-2 apps to show isolated sessions
 // TODO A function to launch the express app, optionally enabling HTTPS
 // TODO Add winston
+// TODO Create tests (automation vs cucumber unit tests)
+// TODO Migrate to typescript. Configure to output commonjs and es6
+// TODO Add prettier and linter
+// TODO Add express-assets-versions?
 
 const defaultConfig = {
     CONFIG_PARAMETER: 'Value placeholder'
