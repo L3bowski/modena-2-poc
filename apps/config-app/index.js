@@ -14,11 +14,11 @@ const environmentConfig = {
 };
 
 const app = getExpressApp(environmentConfig);
-app.listen(3004, error => {
+app.listen(3000, error => {
     if (error) {
         console.log(error);
     }
     else {
-        console.log('ConfigApp running in port 3004');
+        console.log('Config app running in port 3000');
     }
 });
