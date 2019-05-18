@@ -11,7 +11,8 @@ const {
 
 const mainApp = express();
 
-// TODO Create Cypress automation tests
+// TODO Test passport flow with Cypress
+// TODO Test session is available in app2 but not in app1
 // TODO Add cucumber plugin for Cypress
 
 const defaultConfig = {
