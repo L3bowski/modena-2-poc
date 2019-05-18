@@ -11,13 +11,8 @@ const {
 
 const mainApp = express();
 
-// TODO Create passport-1 and passport-2 apps to show isolated sessions
-// TODO A function to launch the express app, optionally enabling HTTPS
-// TODO Add winston
-// TODO Create tests (automation vs cucumber unit tests)
-// TODO Migrate to typescript. Configure to output commonjs and es6
-// TODO Add prettier and linter
-// TODO Add express-assets-versions?
+// TODO Create Cypress automation tests
+// TODO Add cucumber plugin for Cypress
 
 const defaultConfig = {
     CONFIG_PARAMETER: 'Value placeholder'
@@ -35,7 +30,7 @@ const environmentConfig = {
 
 const appsPath = path.join(__dirname, 'apps');
 const apps = getAvailableApps(appsPath);
-setDefaultApp(apps, 'passport');
+setDefaultApp(apps, 'default-app');
 
 mainApp.use(getRequestResolver(apps));
 mainApp.use(getRenderIsolator(appsPath));
