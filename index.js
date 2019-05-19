@@ -6,6 +6,7 @@ const {
     getAvailableApps,
     getRenderIsolator,
     getRequestResolver,
+    launchServer,
     setDefaultApp
 } = require('modena');
 
@@ -37,13 +38,8 @@ mainApp.use(getRequestResolver(apps));
 mainApp.use(getRenderIsolator(appsPath));
 
 exposeHostedApps(mainApp, apps)
-    .then(() => {
-        mainApp.listen(3000, error => {
-            if (error) {
-                console.log(error);
-            }
-            else {
-                console.log(`Server up & running in port 3000 (with CONFIG_PARAMETER="${environmentConfig.CONFIG_PARAMETER}")`);
-            }
-        });
-});
+    .then(_ => launchServer(mainApp, { port: 3000 }))
+    .then(_ => {
+        console.log(`Server up & running in port 3000 (with CONFIG_PARAMETER="${environmentConfig.CONFIG_PARAMETER}")`);
+    })
+    .catch(error => console.log(error));
