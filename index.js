@@ -1,14 +1,17 @@
-const dotenv = require('dotenv');
 const express = require('express');
-const path = require('path');
 const {
     exposeHostedApps,
     getAvailableApps,
     getRenderIsolator,
     getRequestResolver,
+    httpsRedirectMiddleware,
     launchServer,
     setDefaultApp
 } = require('modena');
+const configuration = require('./configuration');
+
+console.log('Server configuration');
+console.log(configuration);
 
 const mainApp = express();
 
@@ -16,31 +19,27 @@ const mainApp = express();
 // TODO Test session is available in app2 but not in app1
 // TODO Add cucumber plugin for Cypress
 
-const defaultConfig = {
-    PORT: 3000
-};
+const apps = getAvailableApps(configuration.APPS_PATH);
+setDefaultApp(apps, configuration.DEFAULT_APP);
 
-const importResult = dotenv.config();
-if (importResult.error) {
-    console.log(`No environment configuration found at ${__dirname}`);
+if (configuration.HTTPS_ENABLE && configuration.HTTPS_REDIRECTION) {
+    mainApp.use(httpsRedirectMiddleware);
 }
 
-// Getting the values from process.env instead of importResult.parsed so that
-// they can directly be injected in Docker through process.env
-const environmentConfig = {
-    PORT: process.env.PORT !== undefined ? process.env.PORT : defaultConfig.PORT
+mainApp.use(getRequestResolver(apps));
+mainApp.use(getRenderIsolator(configuration.APPS_PATH));
+
+const serverConfig = {
+    port: configuration.PORT,
+    httpsConfiguration: {
+        certPath: configuration.HTTPS_CER,
+        disableHttp: configuration.HTTPS_DISABLE_HTTP,
+        enableHttps: configuration.HTTPS_ENABLE,
+        keyPath: configuration.HTTPS_KEY,
+        passphrase: configuration.HTTPS_PASSPHRASE
+    }
 };
 
-const appsPath = path.join(__dirname, 'apps');
-const apps = getAvailableApps(appsPath);
-setDefaultApp(apps, 'default-app');
-
-mainApp.use(getRequestResolver(apps));
-mainApp.use(getRenderIsolator(appsPath));
-
 exposeHostedApps(mainApp, apps)
-    .then(_ => launchServer(mainApp, { port: environmentConfig.PORT }))
-    .then(_ => {
-        console.log(`Server up & running in port ${environmentConfig.PORT}`);
-    })
+    .then(_ => launchServer(mainApp, serverConfig))
     .catch(error => console.log(error));

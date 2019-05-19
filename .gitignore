@@ -1,3 +1,5 @@
 node_modules/
 cypress/fixtures/example.json
 cypress/videos
+*.cer
+*.key
