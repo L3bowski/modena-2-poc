@@ -17,6 +17,7 @@ const mainApp = express();
 
 // TODO Test passport flow with Cypress
 // TODO Test session is available in app2 but not in app1
+// TODO Test HTTPs server
 // TODO Add cucumber plugin for Cypress
 
 const apps = getAvailableApps(configuration.APPS_PATH);

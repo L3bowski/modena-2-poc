@@ -1,0 +1,6 @@
+{
+    "publicDomains": [
+        "test-cross-domain.com:3000"
+    ],
+    "publicDomainCrossAccess": true
+}
